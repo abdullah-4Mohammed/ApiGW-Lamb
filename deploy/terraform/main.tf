@@ -1,34 +1,78 @@
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "${path.module}/../../src/lambda/SQS-lam.js"
-  output_path = "${path.module}/../../src/lambda/SQS-lam.zip"
+  source_file = "${path.module}/../../src/lambda/lam.py"
+  output_path = "${path.module}/../../src/lambda/lam.zip"
 }
 
-# add resource lambda function python ToBeInvoked
-resource "aws_lambda_function" "SQS-lam" {
-  function_name = "${local.resourceName}-SQS-lam"
-  handler = "SQS-lam.handler"
-  runtime = "nodejs18.x"
-  role = aws_iam_role.sqs-lam-role.arn 
+# add resource lambda function python lam to be a backend for the api gateway
+resource "aws_lambda_function" "lam" {
+  function_name = "${local.resourceName}-lam"
+  handler = "lam.handler"
+  runtime = "python3.8"
+  role = aws_iam_role.lam-role.arn
   filename = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 }
 
-//add sqs queue to invoke lambda function
-resource "aws_sqs_queue" "SQS" {
-  name = "${local.resourceName}-SQS"
+# add api gateway
+resource "aws_api_gateway_rest_api" "api" {
+  name = "${local.resourceName}-api-gw"
 }
 
-// add event source mapping sqs-lambda-source-mapping
-resource "aws_lambda_event_source_mapping" "sqs-lambda-source-mapping" {
-  event_source_arn = aws_sqs_queue.SQS.arn
-  function_name = aws_lambda_function.SQS-lam.arn
+resource "aws_api_gateway_resource" "test" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id = aws_api_gateway_rest_api.api.root_resource_id
+  path_part = "lam"
 }
+
+resource "aws_api_gateway_method" "api_method" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.test.id
+  http_method = "GET"
+  authorization = "NONE"
+  request_parameters = {
+    "method.request.header.Content-Type" = true
+  }
+}
+
+#  this code block creates a new API Gateway integration that responds to
+#   the specified HTTP method on the specified resource, calls the specified 
+#   Lambda function when invoked, and uses a Lambda proxy integration.
+
+resource "aws_api_gateway_integration" "api_integration" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.test.id
+  http_method = aws_api_gateway_method.api_method.http_method
+  integration_http_method = "GET"
+  type = "AWS_PROXY"
+  uri = aws_lambda_function.lam.invoke_arn
+}
+
+resource "aws_api_gateway_deployment" "api_deployment" {
+  depends_on = [aws_api_gateway_integration.api_integration]
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  stage_name = "dev"
+}
+
+resource "aws_api_gateway_stage" "api_stage" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  stage_name = aws_api_gateway_deployment.api_deployment.stage_name
+  deployment_id = aws_api_gateway_deployment.api_deployment.id
+}
+
+resource "aws_lambda_permission" "api_lambda_permission" {
+  statement_id = "AllowAPIGatewayInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lam.function_name
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+}
+
 
 
 # Create the IAM role
-resource "aws_iam_role" "sqs-lam-role" {
-  name = "${local.resourceName}-sqs-lam-role"
+resource "aws_iam_role" "role" {
+  name = "${local.resourceName}-role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -46,8 +90,8 @@ EOF
 }
 
 # Create the policy
-resource "aws_iam_policy" "sqs-lam-policy" {
-  name = "${local.resourceName}-sqs-lam-policy"
+resource "aws_iam_policy" "policy" {
+  name = "${local.resourceName}-policy"
   description = "Allow lambda to send logs to CloudWatch"
   policy = <<EOF
 {
@@ -61,16 +105,6 @@ resource "aws_iam_policy" "sqs-lam-policy" {
         "logs:PutLogEvents"
       ],
       "Resource": "arn:aws:logs:*:*:*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "sqs:SendMessage",
-        "sqs:ReceiveMessage",
-        "sqs:DeleteMessage",
-        "sqs:GetQueueAttributes"
-      ],
-      "Resource": "*"
     }
   ]
 }
@@ -78,7 +112,7 @@ EOF
 }
 
 # Attach the policy to the role
-resource "aws_iam_role_policy_attachment" "sqs-lam-policy-attachment" {
-  role = aws_iam_role.sqs-lam-role.name
-  policy_arn = aws_iam_policy.sqs-lam-policy.arn
+resource "aws_iam_role_policy_attachment" "policy-attachment" {
+  role = aws_iam_role.role.name
+  policy_arn = aws_iam_policy.policy.arn
 }
