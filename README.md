@@ -1,3 +1,3 @@
-# SQS invok Lambda
-deploying SQS and lambda , SQS which will invoke the lambda. terraform for the iac deployment and azure devobs for the pipelining.
+# API GW pointing to Lambda
+deploying API GW and lambda. in this example, the Lambda function serves as the backend logic for your API. terraform for the iac deployment and azure devobs for the pipelining.
 
