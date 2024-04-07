@@ -2,7 +2,7 @@ variable "environment" {
   type = string
 }
 
-variable "serviceShortName" {
+variable "serviceName" {
   type = string
 }
 
@@ -19,7 +19,7 @@ variable "region" {
 }
 
 locals {
-  resourceName = "Az-aws-${var.serviceShortName}-${var.environment}-${var.regionShortName}"
+  resourceName = "Az-aws-${var.serviceName}-${var.environment}-${var.regionShortName}"
   key = "tf/${var.environment}.tfstate"
   region = "${var.region}"
   backendBucket = "${var.backendBucket}"

@@ -22,7 +22,7 @@ resource "aws_api_gateway_rest_api" "api" {
 resource "aws_api_gateway_resource" "test" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   parent_id = aws_api_gateway_rest_api.api.root_resource_id
-  path_part = "test1"
+  path_part = "test"
 }
 
 resource "aws_api_gateway_method" "api_method" {
@@ -61,13 +61,13 @@ resource "aws_api_gateway_deployment" "api_deployment" {
 #   deployment_id = aws_api_gateway_deployment.api_deployment.id
 # }
 
-# resource "aws_lambda_permission" "api_lambda_permission" {
-#   statement_id = "AllowAPIGatewayInvoke"
-#   action = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.lam.function_name
-#   principal = "apigateway.amazonaws.com"
-#   source_arn = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
-# }
+resource "aws_lambda_permission" "api_lambda_permission" {
+  statement_id = "AllowAPIGatewayInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lam.function_name
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+}
 
 
 
