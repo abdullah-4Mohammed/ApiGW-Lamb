@@ -46,6 +46,7 @@ resource "aws_api_gateway_integration" "api_integration" {
   integration_http_method = "GET"
   type = "AWS_PROXY"
   uri = aws_lambda_function.lam.invoke_arn
+  credentials = aws_iam_role.role.arn
 }
 
 resource "aws_api_gateway_deployment" "api_deployment" {
@@ -54,19 +55,19 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   stage_name = "dev"
 }
 
-resource "aws_api_gateway_stage" "api_stage" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  stage_name = aws_api_gateway_deployment.api_deployment.stage_name
-  deployment_id = aws_api_gateway_deployment.api_deployment.id
-}
+# resource "aws_api_gateway_stage" "api_stage" {
+#   rest_api_id = aws_api_gateway_rest_api.api.id
+#   stage_name = aws_api_gateway_deployment.api_deployment.stage_name
+#   deployment_id = aws_api_gateway_deployment.api_deployment.id
+# }
 
-resource "aws_lambda_permission" "api_lambda_permission" {
-  statement_id = "AllowAPIGatewayInvoke"
-  action = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.lam.function_name
-  principal = "apigateway.amazonaws.com"
-  source_arn = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
-}
+# resource "aws_lambda_permission" "api_lambda_permission" {
+#   statement_id = "AllowAPIGatewayInvoke"
+#   action = "lambda:InvokeFunction"
+#   function_name = aws_lambda_function.lam.function_name
+#   principal = "apigateway.amazonaws.com"
+#   source_arn = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+# }
 
 
 
@@ -80,7 +81,10 @@ resource "aws_iam_role" "role" {
     {
       "Effect": "Allow",
       "Principal": {
-        "Service": "lambda.amazonaws.com"
+        "Service": [
+          "lambda.amazonaws.com", 
+          "apigateway.amazonaws.com"
+        ]
       },
       "Action": "sts:AssumeRole"
     }
@@ -91,8 +95,9 @@ EOF
 
 # Create the policy
 resource "aws_iam_policy" "policy" {
-  name = "${local.resourceName}-policy"
-  description = "Allow lambda to send logs to CloudWatch"
+  name        = "${local.resourceName}-policy"
+  description = "Policy for API Gateway, Lambda, and CloudWatch Logs"
+
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -105,6 +110,24 @@ resource "aws_iam_policy" "policy" {
         "logs:PutLogEvents"
       ],
       "Resource": "arn:aws:logs:*:*:*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunction"
+      ],
+      "Resource": "arn:aws:lambda:*:*:*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:DELETE",
+        "apigateway:PATCH"
+      ],
+      "Resource": "arn:aws:apigateway:*::*/*"
     }
   ]
 }
