@@ -4,4 +4,4 @@ variables:
   backendBucketName: "backend-tfstate"
   backendBucket: "sqs-lam-backend-tfstate-euw2"
   regionShortName: euw2
-  serviceName: sqs-lam
+  serviceName: apigw-lam
