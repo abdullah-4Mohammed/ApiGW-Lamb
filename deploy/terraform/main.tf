@@ -107,7 +107,10 @@ resource "aws_iam_policy" "policy" {
       "Action": [
         "logs:CreateLogGroup",
         "logs:CreateLogStream",
-        "logs:PutLogEvents"
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams",
+        "logs:DescribeLogGroups",
+        "logs:GetLogEvents"
       ],
       "Resource": "arn:aws:logs:*:*:*"
     },
