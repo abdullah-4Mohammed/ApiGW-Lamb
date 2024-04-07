@@ -1,6 +1,6 @@
 import json
 
-def lambda_handler(event, context):
+def handler(event, context):
     # Sample response data
     response_data = {
         "message": "Hello from Lambda!"

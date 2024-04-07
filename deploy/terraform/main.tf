@@ -1,13 +1,13 @@
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "${path.module}/../../src/lambda/lam.py"
-  output_path = "${path.module}/../../src/lambda/lam.zip"
+  source_file = "${path.module}/../../src/lambda/lambda.py"
+  output_path = "${path.module}/../../src/lambda/lambda.zip"
 }
 
 # add resource lambda function python lam to be a backend for the api gateway
 resource "aws_lambda_function" "lam" {
   function_name = "${local.resourceName}-lam"
-  handler = "lam.handler"
+  handler = "lambda.handler"
   runtime = "python3.8"
   role = aws_iam_role.role.arn
   filename = data.archive_file.lambda_zip.output_path
